@@ -1,7 +1,7 @@
 #!/bin/bash
 
 mkdir -p public
-base_url="https://fatsec.example.com"
+base_url="https://fkkarakurt.github.io"
 
 for file in posts/*.md; do
   filename=$(basename "$file" .md)
@@ -19,7 +19,7 @@ for file in posts/*.md; do
   }" \
   -e "s/___TITLE_HERE___/$title/g" \
   -e "s|description_meta.|$description|g" \
-  -e "s|https://yourdomain.com/path-to-article.html|$url|g" \
+  -e "s|https://fkkarakurt.github.io/path-to-article.html|$url|g" \
   -e "s|summary.|$description|g" \
   template.html > public/"$filename".html
 
