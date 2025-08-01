@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="TESTTESTTEST22222222222" />
+    <meta name="author" content="Fatih Küçükkarakurt" />
+    <meta name="robots" content="index, follow" />
+    <meta name="theme-color" content="#0b1a0b" />
+
+    <title>Review of CWE-843 Type Confusion Vulnerability and Exploit</title>
+    <meta property="og:title" content="Review of CWE-843 Type Confusion Vulnerability and Exploit" />
+    <meta property="og:type" content="article" />
+    <meta property="og:url" content="https://fatsec.example.com/public/cwe-843.html" />
+    <meta property="og:description" content="TESTTESTTEST22222222222" />
+
+    <link rel="icon" href="./favicon.ico" type="image/x-icon" />
+    <link rel="stylesheet" href="../style.css" />
+</head>
+
+<body>
+    <main>
+        <pre class="logo">
+▗▄▄▄▖ ▗▄▖▗▄▄▄▖▗▄▄▖▗▄▄▄▖ ▗▄▄▖
+▐▌   ▐▌ ▐▌ █ ▐▌   ▐▌   ▐▌   
+▐▛▀▀▘▐▛▀▜▌ █  ▝▀▚▖▐▛▀▀▘▐▌   
+▐▌   ▐▌ ▐▌ █ ▗▄▄▞▘▐▙▄▄▖▝▚▄▄▖
+    </pre>
+
+        <nav class="menu">
+            <a href="../index.html">/home</a>
+            <a href="https://github.com/fkkarakurt" target="_blank" rel="noopener noreferrer">/git</a>
+        </nav>
+
+        <article class="posts markdown-body">
+            <h1>Review of CWE-843 Type Confusion Vulnerability and Exploit</h1>
+            <p>In the world of low-level programming, what you think you're accessing isn't always what you're really
+                accessing. This subtle mismatch between the type a programmer assumes and the actual memory layout is at
+                the heart of a class of bugs known as type confusion vulnerabilities.</p>
+            <p>While buffer overflows and use-after-free bugs have long taken the spotlight, CWE-843 (Access of Resource
+                Using Incompatible Type) lurks quietly beneath the surface, waiting for the right moment to break memory
+                safety and expose critical systems. It’s not just a theoretical issue. Type confusion has been exploited
+                in real-world CVEs affecting everything from browser engines to embedded firmware.</p>
+            <p>Let’s explore how one incorrect assumption about types can open the door to undefined behavior and how
+                attackers can walk right through it.</p>
+            <h2>Understanding Type Systems and Memory Layouts</h2>
+            <p>C is a low-level language that gives you direct access to memory, but it does very little to protect you
+                from misusing that power. The compiler trusts you to know what you’re doing especially when it comes to
+                how types map to memory.</p>
+            <p>In theory, the type system in C should help organize data: an <code>int</code> is 4 bytes, a
+                <code>char</code> is 1 byte, a <code>struct</code> groups fields together, and arrays lay out elements
+                linearly in memory. But the type system isn’t enforced at runtime. It exists mostly to help the compiler
+                generate the right instructions. If you cast a pointer to another type, the compiler will go along with
+                it, no questions asked.</p>
+            <p>That’s where things get dangerous. When you access memory using an incompatible type say, treating an
+                <code>int[]</code> as a <code>char*</code> or casting a <code>struct</code> pointer to something else
+                you might interpret memory incorrectly. This can result in anything from silent logic bugs to critical
+                vulnerabilities.</p>
+            <p>The memory layout of objects, especially in the presence of padding, alignment, or architecture-specific
+                behavior, is crucial. If your mental model of the layout doesn’t match the actual representation, you’re
+                flying blind. And in systems programming, that almost always ends badly.</p>
+            <p>The wrong type tells the program to read or write memory in a way it was never supposed to. That’s not
+                just undefined behavior—it’s an entry point for attackers.</p>
+            <h2>Accessing Resources Using Incompatible Types</h2>
+            <p>Let's build a concrete example of how treating one type as another can let an attacker bypass intended
+                restrictions or access unintended memory. This is the kind of scenario that CWE-843 specifically
+                targets.</p>
+            <p>Suppose we have a kernel-like interrupt handler that only allows certain high-priority IRQs (interrupt
+                requests) to be processed. The program uses an <code>int[]</code> array to store priorities, but access
+                to this array isn’t type-checked at runtime. That’s where things go wrong.</p>
+            <p>Here’s a minimal C example:</p>
+            <pre><code class="language-c">#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+
+int current_priority = 3;
+int irq_priority[5] = {1, 2, 3, 4, 5};
+
+void process_interrupt(int irq) {
+    printf(&quot;Processing interrupt %d\n&quot;, irq);
+}
+
+void interrupt_handler(int irq) {
+    if (irq_priority[irq] &lt; current_priority) {
+        fprintf(stderr, &quot;Warning: Interrupt %d dropped (priority too low)\n&quot;, irq);
+        exit(EXIT_FAILURE);
+    }
+    process_interrupt(irq);
+}
+</code></pre>
+            <p>This seems fine at first glance. But what if <code>irq</code> is user-controlled and passed unchecked?
+            </p>
+            <p>Now let’s simulate an attacker exploiting this by crafting a fake <code>irq</code> value that causes the
+                handler to interpret unrelated memory as if it were part of the <code>irq_priority</code> array.</p>
+            <pre><code class="language-c">#include &lt;string.h&gt;
+
+char secret[] = &quot;TOP_SECRET_STRING&quot;;
+
+int main() {
+    // Forcefully interpret `secret` as if it were part of irq_priority
+    int *fake_irq_priority = (int *)secret;
+
+    // Simulate misbehavior: access the fake array through type punning
+    for (int i = 0; i &lt; 4; i++) {
+        printf(&quot;Fake priority[%d]: %d\n&quot;, i, fake_irq_priority[i]);
+    }
+
+    // If irq_priority is improperly accessed via fake index,
+    // memory past legitimate bounds is revealed.
+}
+</code></pre>
+            <p>With the right pointer arithmetic and type casting, <code>secret</code> gets interpreted as an integer
+                array. If this casting happens in a function that trusts the type, we can accidentally (or maliciously)
+                extract data not meant to be exposed.</p>
+            <p>This is where type confusion turns into a data disclosure vulnerability. Even though types are declared
+                safely, the language makes it trivial to reinterpret memory as a different type—without checks or
+                warnings.</p>
+            <hr />
+            <p>If you want to simulate:</p>
+            <pre><code class="language-c">// cwe-843.c
+#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;string.h&gt;
+
+// Legitimate system-level globals
+int current_priority = 3;
+int irq_priority[5] = {1, 2, 3, 4, 5};
+
+void process_interrupt(int irq) {
+    printf(&quot;Legitimately processing interrupt %d\n&quot;, irq);
+}
+
+void interrupt_handler(int irq) {
+    if (irq_priority[irq] &lt; current_priority) {
+        fprintf(stderr, &quot;Interrupt %d dropped (priority too low)\n&quot;, irq);
+        exit(EXIT_FAILURE);
+    }
+    process_interrupt(irq);
+}
+
+// Attacker-controlled buffer simulating sensitive memory
+char secret[] = &quot;TOP_SECRET_STRING&quot;;
+
+// Simulated type confusion exploit
+void simulate_type_confusion() {
+    printf(&quot;\nSimulating type confusion...\n&quot;);
+
+    // Type punning: treat a char* as int*
+    int *fake_irq_priority = (int *)secret;
+
+    for (int i = 0; i &lt; 4; i++) {
+        printf(&quot;fake_irq_priority[%d] = %d\n&quot;, i, fake_irq_priority[i]);
+    }
+
+    int forged_irq = 0;
+
+    if (fake_irq_priority[forged_irq] &gt;= current_priority) {
+        printf(&quot;Attacker triggers process_interrupt with forged value %d\n&quot;, fake_irq_priority[forged_irq]);
+        process_interrupt(forged_irq);
+    } else {
+        printf(&quot;Forged priority too low: %d\n&quot;, fake_irq_priority[forged_irq]);
+    }
+}
+
+int main() {
+    printf(&quot;Initial legitimate IRQ processing:\n&quot;);
+    interrupt_handler(4); // Legit call, priority 4 &gt;= 3
+
+    simulate_type_confusion();
+
+    return 0;
+}
+</code></pre>
+            <pre><code class="language-bash">gcc -o cwe-843 cwe-843.c -Wall
+</code></pre>
+            <h3>Why This Matters</h3>
+            <p>In real-world systems—kernels, firmware, embedded software—this exact pattern shows up all the time.
+                Functions receive untrusted input and make decisions based on type-dependent logic, without actual
+                runtime type verification. The result? Attackers manipulate memory by simply shifting how it’s
+                interpreted.</p>
+            <h2>From Logical Flaws to Arbitrary Memory Access</h2>
+            <p>Type confusion vulnerabilities are often underestimated because, on the surface, they may appear as
+                harmless logic bugs one pointer cast gone wrong, a compiler warning ignored. However, beneath this
+                simplicity lies a dangerous class of bugs that, if left unchecked, allow attackers to pierce memory
+                safety boundaries and access or modify arbitrary locations in memory.</p>
+            <p>In our previous example, a char buffer was force-cast to an <code>int *</code>, simulating a malicious
+                reinterpretation of memory. What looks like a benign reinterpretation becomes lethal in systems that
+                rely on strict memory layouts for control flow decisions. This is especially common in embedded systems,
+                real-time OS kernels, and any C/C++ system that manages memory manually.</p>
+            <p>The core issue is not just the cast, but the assumption that memory behind the pointer is of a certain
+                type and layout. When that assumption is violated, everything built atop it bounds checks, privilege
+                checks, pointer arithmetic becomes unreliable. That's the moment logical flaws escalate into memory
+                corruption, memory disclosure, or even arbitrary code execution.</p>
+            <p>Consider a scenario where attacker-controlled memory overlaps with security-critical structures like
+                access control tables, function pointers, or interrupt priorities. By injecting values with carefully
+                aligned bytes, the attacker can coerce the system into reading forged permissions, executing unintended
+                paths, or skipping checks entirely. This is how logical flaws transition into full-blown memory safety
+                violations.</p>
+            <p>In modern exploit development, especially in CTFs or in-the-wild kernel exploits, these primitives are
+                often used to achieve <strong>memory disclosure (infoleak)</strong> or <strong>arbitrary
+                    read/write</strong>, which serve as the groundwork for more advanced attacks like ROP or shellcode
+                injection.</p>
+            <h2>Memory Reinterpretation in Action</h2>
+            <p>To clearly demonstrate how type confusion can lead to <strong>arbitrary memory access</strong>, let's
+                take a closer look at what’s happening in memory. The buffer
+                <code>char secret[] = &quot;TOP_SECRET_STRING&quot;</code> resides next to critical system-level
+                variables like <code>irq_priority</code>. If an attacker is able to cast this buffer as
+                <code>int *</code>, they can read (and potentially write) memory in 4-byte chunks — completely
+                misaligned with the buffer’s original type.</p>
+            <p>Below is a simplified hexdump-like view of the memory, along with the output of the type-punning
+                operation:</p>
+            <p>📌 <strong>Simulated Memory Layout (Hex View)</strong></p>
+            <pre><code>0x601000:  0x54 0x4F 0x50 0x5F    T O P _
+0x601004:  0x53 0x45 0x43 0x52    S E C R
+0x601008:  0x45 0x54 0x5F 0x53    E T _ S
+0x60100C:  0x54 0x52 0x49 0x4E    T R I N
+</code></pre>
+            <p>📌 <strong>Fake Interpretation as <code>int *</code></strong>
+                (Casting <code>char *secret</code> to <code>int *</code> and reading integers from it)</p>
+            <pre><code class="language-c">fake_irq_priority[0] = 0x5F504F54  // '_POT' → Interpreted as int
+fake_irq_priority[1] = 0x52434553  // 'RCES'
+fake_irq_priority[2] = 0x535F5445  // 'S_TE'
+fake_irq_priority[3] = 0x4E495254  // 'NIRT'
+</code></pre>
+            <p>Each 4-byte read leaks a part of the string buffer, but interpreted as meaningless integers. Still, these
+                values can bypass checks like <code>if (irq_priority[irq] &lt; current_priority)</code> because they may
+                coincidentally satisfy the condition due to their numeric representation.</p>
+            <p>📌 <strong>Exploit Result</strong></p>
+            <pre><code class="language-bash">Simulating type confusion...
+fake_irq_priority[0] = 1600942164
+fake_irq_priority[1] = 1379997027
+fake_irq_priority[2] = 1397506917
+fake_irq_priority[3] = 1313037364
+Attacker triggers process_interrupt with forged value 1600942164
+Legitimately processing interrupt 0
+</code></pre>
+            <p>Even though the real <code>irq_priority[0] = 1</code>, the forged value from <code>secret[0..3]</code> is
+                numerically <strong>1600942164</strong>, easily passing the <code>&gt;= current_priority</code> check.
+            </p>
+            <hr />
+            <p>I recommend you check out:</p>
+            <ul>
+                <li><a
+                        href="https://cwe.mitre.org/data/definitions/843.html">https://cwe.mitre.org/data/definitions/843.html</a>
+                </li>
+                <li><a
+                        href="https://bugix-security.blogspot.com/2011/04/cve-2011-0611-adobe-flash-zero-day.html">https://bugix-security.blogspot.com/2011/04/cve-2011-0611-adobe-flash-zero-day.html</a>
+                </li>
+                <li><a
+                        href="https://yuleisui.github.io/publications/issre19.pdf">https://yuleisui.github.io/publications/issre19.pdf</a>
+                </li>
+            </ul>
+        </article>
+
+        <footer style="text-align: center; margin-top: 4rem; color: #4e9a4e; font-size: 0.85rem;">
+            <hr style="border-color: #1f441f;" />
+            <p>
+                This site runs on caffeine and hard rock.
+                <br />
+                &copy; 2025 | FatSec | All wrongs reversed.
+            </p>
+        </footer>
+    </main>
+
+</body>
+
+</html>

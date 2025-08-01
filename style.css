@@ -1,0 +1,234 @@
+body {
+    background-color: black;
+    color: #b6e2b6;
+    font-family: monospace, serif;
+    margin: 0;
+    padding: 2rem;
+    display: flex;
+    justify-content: center;
+    min-height: 100vh;
+    box-sizing: border-box;
+}
+
+::selection {
+    background-color: #00ff66;
+    color: black;
+}
+
+main {
+    width: 100%;
+    max-width: 720px;
+    padding: 0 1rem;
+}
+
+footer {
+    max-width: 720px;
+    margin: 4rem auto 0;
+    color: #4e9a4e;
+    font-size: 0.85rem;
+    border-top: 1px solid #1f441f;
+    padding-top: 1rem;
+    text-align: center;
+}
+
+.logo {
+    text-align: center;
+    font-weight: bold;
+    font-size: 1.2rem;
+    line-height: 1.1;
+    margin-bottom: 1rem;
+    color: #00dd66;
+    user-select: none;
+    text-shadow: 0 0 2px #00ff66;
+}
+
+.menu {
+    display: flex;
+    justify-content: center;
+    gap: 1.5rem;
+    margin-top: 2rem;
+    margin-bottom: 2rem;
+    user-select: none;
+}
+
+.menu a {
+    color: #b6e2b6;
+    text-decoration: none;
+    font-weight: 600;
+    border-bottom: 2px solid transparent;
+    padding-bottom: 0.2rem;
+    transition: border-color 0.3s;
+}
+
+.menu a:hover,
+.menu a.active {
+    border-color: #8fe88f;
+}
+
+.posts article {
+    margin-top: 2rem;
+    text-align: center;
+    margin-bottom: 1rem;
+    font-size: 0.95rem;
+    user-select: none;
+}
+
+.posts time {
+    color: #009944;
+    font-variant-numeric: tabular-nums;
+}
+
+.posts a {
+    color: #00ff66;
+    text-decoration: none;
+}
+
+.posts a:hover {
+    text-decoration: underline;
+}
+
+.markdown-body {
+    font-family: monospace, serif;
+    max-width: 640px;
+    margin: 0 auto;
+    line-height: 1.5;
+    font-size: 16px;
+}
+
+.markdown-body h1,
+.markdown-body h2,
+.markdown-body h3 {
+    color: #00ff99;
+    margin-top: 1.5em;
+    margin-bottom: 0.5em;
+    font-weight: bold;
+    border-bottom: 1px solid #006633;
+    padding-bottom: 0.3em;
+    text-shadow: 0 0 1px #00ff66;
+}
+
+.markdown-body p {
+    margin-bottom: 1em;
+    text-align: justify;
+    hyphens: auto;
+}
+
+.markdown-body a {
+    color: #00ff99;
+    text-decoration: none;
+}
+
+.markdown-body a:hover {
+    text-decoration: underline;
+}
+
+.markdown-body code {
+    color: #00cc66;
+    font-size: 90%;
+    padding: 2px 4px;
+    border-radius: 3px;
+}
+
+.markdown-body pre {
+    background-color: #001a00;
+    color: #00ff66;
+    overflow-x: auto;
+    white-space: pre;
+    padding: 1em;
+    border: 1px solid #003300;
+    border-radius: 4px;
+    margin-top: 2em;
+    margin-bottom: 1.5em;
+}
+
+.markdown-body code[class*="language-"] {
+    color: #00ffcc;
+}
+
+.markdown-body blockquote {
+    border-left: 4px solid #007744;
+    padding-left: 1em;
+    color: #66ffbb;
+    margin: 1em 0;
+    font-style: italic;
+    background: #001a00;
+}
+
+.markdown-body ul,
+.markdown-body ol {
+    margin-left: 2em;
+    margin-bottom: 1em;
+}
+
+.markdown-body img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+    margin: 1.5em auto;
+    border: 1px solid #004422;
+    border-radius: 4px;
+    box-shadow: 0 0 4px #003311;
+}
+
+.markdown-body table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1em 0;
+    font-size: 14px;
+}
+
+.markdown-body th,
+.markdown-body td {
+    border: 1px solid #005522;
+    padding: 0.5em 0.8em;
+    text-align: left;
+}
+
+.markdown-body th {
+    background: #002b11;
+    color: #00ff88;
+}
+
+.markdown-body tr:nth-child(even) {
+    background: #001a0a;
+}
+
+/* Scrollbar for code blocks on narrow screens */
+.markdown-body pre::-webkit-scrollbar {
+    height: 8px;
+}
+
+.markdown-body pre::-webkit-scrollbar-thumb {
+    background: #007744;
+}
+
+.markdown-body pre::-webkit-scrollbar-track {
+    background: #001a00;
+}
+
+/* Responsive tweaks */
+@media (min-width: 1024px) {
+    main {
+        max-width: 860px;
+        font-size: 1.05rem;
+    }
+
+    footer {
+        max-width: 860px;
+    }
+}
+
+@media (max-width: 480px) {
+    body {
+        padding: 1rem;
+    }
+
+    .menu {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .logo {
+        font-size: 1rem;
+    }
+}
